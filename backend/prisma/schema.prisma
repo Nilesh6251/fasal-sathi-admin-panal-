@@ -1,0 +1,310 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FASAL SATHI - PRISMA SCHEMA
+// Database: SQLite
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ━━━━━━━━━━ USER MODEL ━━━━━━━━━━
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String?  @unique
+  password     String
+  role         String   @default("Farmer") // SuperAdmin, Moderator, Seller, Farmer
+  profileImage String?
+  state        String?
+  district     String?
+  crops        String?  // Comma-separated crop names
+  isBlocked    Boolean  @default(false)
+  isVerified   Boolean  @default(false)
+  fcmToken     String?  // Firebase Cloud Messaging token
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  seller         Seller?
+  chats          Chat[]
+  orders         Order[]
+  reviews        Review[]
+  notifications  Notification[]
+  supportTickets SupportTicket[]
+  weatherLogs    WeatherLog[]
+  reports        Report[]
+
+  @@map("users")
+}
+
+// ━━━━━━━━━━ SELLER MODEL ━━━━━━━━━━
+model Seller {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  businessName  String
+  businessType  String?
+  gstNumber     String?
+  address       String?
+  description   String?
+  isApproved    Boolean  @default(false)
+  rating        Float    @default(0)
+  totalSales    Int      @default(0)
+  totalRevenue  Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@map("sellers")
+}
+
+// ━━━━━━━━━━ PRODUCT MODEL ━━━━━━━━━━
+model Product {
+  id          String   @id @default(uuid())
+  sellerId    String
+  name        String
+  description String?
+  price       Float
+  mrp         Float?
+  category    String
+  subCategory String?
+  images      String?  // JSON array of image URLs
+  stock       Int      @default(0)
+  unit        String?  // kg, litre, piece, packet
+  brand       String?
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  discount    Float?   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  seller      Seller      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  reviews     Review[]
+
+  @@map("products")
+}
+
+// ━━━━━━━━━━ ORDER MODEL ━━━━━━━━━━
+model Order {
+  id              String   @id @default(uuid())
+  userId          String
+  totalAmount     Float
+  status          String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
+  paymentMethod   String?  // cod, online, upi
+  paymentStatus   String   @default("pending") // pending, paid, failed, refunded
+  shippingAddress String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+// ━━━━━━━━━━ ORDER ITEM MODEL ━━━━━━━━━━
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+// ━━━━━━━━━━ CHAT MODEL ━━━━━━━━━━
+model Chat {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  response  String?
+  role      String   @default("user") // user, assistant
+  category  String?  // crop, weather, scheme, general
+  language  String?  @default("hi") // hi, en, mr, etc
+  isStarred Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chats")
+}
+
+// ━━━━━━━━━━ NOTIFICATION MODEL ━━━━━━━━━━
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String?
+  title     String
+  message   String
+  type      String   @default("general") // general, weather, scheme, emergency, reminder, news
+  imageUrl  String?
+  isRead    Boolean  @default(false)
+  isGlobal  Boolean  @default(false) // If true, sent to all users
+  data      String?  // JSON extra data
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ━━━━━━━━━━ GOVERNMENT SCHEME MODEL ━━━━━━━━━━
+model GovernmentScheme {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  ministry    String?
+  eligibility String?
+  benefits    String?
+  state       String?  // null means all-India
+  category    String?  // subsidy, loan, insurance, training
+  imageUrl    String?
+  pdfUrl      String?
+  applyUrl    String?
+  isFeatured  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  startDate   DateTime?
+  expiryDate  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("government_schemes")
+}
+
+// ━━━━━━━━━━ MANDI PRICE MODEL ━━━━━━━━━━
+model MandiPrice {
+  id         String   @id @default(uuid())
+  crop       String
+  variety    String?
+  market     String
+  district   String
+  state      String
+  minPrice   Float
+  maxPrice   Float
+  modalPrice Float
+  unit       String   @default("quintal")
+  date       DateTime
+  source     String?
+  createdAt  DateTime @default(now())
+
+  @@map("mandi_prices")
+}
+
+// ━━━━━━━━━━ NEWS ARTICLE MODEL ━━━━━━━━━━
+model NewsArticle {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  summary     String?
+  category    String?  // agriculture, weather, govt, market, technology
+  imageUrl    String?
+  videoUrl    String?
+  source      String?
+  author      String?
+  isBreaking  Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  isPublished Boolean  @default(true)
+  views       Int      @default(0)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("news_articles")
+}
+
+// ━━━━━━━━━━ WEATHER LOG MODEL ━━━━━━━━━━
+model WeatherLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  city        String
+  state       String?
+  temperature Float?
+  humidity    Float?
+  windSpeed   Float?
+  condition   String?
+  forecast    String?  // JSON weather forecast data
+  alertType   String?  // none, warning, severe
+  alertMessage String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("weather_logs")
+}
+
+// ━━━━━━━━━━ REPORT MODEL ━━━━━━━━━━
+model Report {
+  id          String   @id @default(uuid())
+  userId      String?
+  type        String   // daily, weekly, monthly, custom
+  category    String?  // users, sales, crops, ai_usage
+  data        String?  // JSON report data
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("reports")
+}
+
+// ━━━━━━━━━━ REVIEW MODEL ━━━━━━━━━━
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  rating    Int      // 1-5
+  comment   String?
+  images    String?  // JSON array of image URLs
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+// ━━━━━━━━━━ SUPPORT TICKET MODEL ━━━━━━━━━━
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      String
+  subject     String
+  description String
+  category    String?  // account, order, technical, suggestion, complaint
+  status      String   @default("open") // open, in_progress, resolved, closed
+  priority    String   @default("medium") // low, medium, high, urgent
+  adminReply  String?
+  attachments String?  // JSON array of file URLs
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("support_tickets")
+}

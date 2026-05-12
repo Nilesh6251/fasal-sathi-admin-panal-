@@ -9,6 +9,9 @@ import MandiBhav from "./pages/MandiBhav"
 import Login from "./pages/Login"
 import AIAnalytics from "./pages/AIAnalytics"
 import Notifications from "./pages/Notifications"
+import Sellers from "./pages/Sellers"
+import DiseaseAnalysis from "./pages/DiseaseAnalysis"
+import AIConfig from "./pages/AIConfig"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -32,6 +35,9 @@ function App() {
             <Route path="mandi-bhav" element={<MandiBhav />} />
             <Route path="analytics" element={<AIAnalytics />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="sellers" element={<Sellers />} />
+            <Route path="disease-analysis" element={<DiseaseAnalysis />} />
+            <Route path="ai-config" element={<AIConfig />} />
           </Route>
         </Routes>
       </Router>

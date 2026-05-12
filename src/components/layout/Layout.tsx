@@ -4,11 +4,11 @@ import TopHeader from "./TopHeader"
 
 export default function Layout() {
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-emerald-50/30 to-teal-50/20">
+    <div className="flex h-screen overflow-hidden bg-[#050505]">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden relative">
         <TopHeader />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 scrollbar-hide">
           <Outlet />
         </main>
       </div>

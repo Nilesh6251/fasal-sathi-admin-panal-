@@ -1,191 +1,287 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
-import { Sprout, Lock, Mail, Leaf, Sun, CloudRain, Wheat, Loader2 } from "lucide-react"
+import { Lock, Mail, Eye, EyeOff, Loader2, ShieldCheck, Wheat, Sun, Leaf, CloudRain } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import logoSvg from "../assets/Logo.svg"
+
+const FEATURE_PILLS = [
+  { icon: Wheat,     label: "Crop Analytics" },
+  { icon: Sun,       label: "Weather Alerts" },
+  { icon: CloudRain, label: "Mandi Prices"   },
+  { icon: Leaf,      label: "AI Powered"     },
+]
+
+const STATS = [
+  { value: "12,456", label: "Active Farmers" },
+  { value: "8,234",  label: "Verified IDs"   },
+  { value: "45+",    label: "Live Schemes"   },
+]
 
 export default function Login() {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const [email, setEmail] = useState("admin@fasalsathi.com")
+  const [email, setEmail]       = useState("admin@fasalsathi.com")
   const [password, setPassword] = useState("admin123")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [showPwd, setShowPwd]   = useState(false)
+  const [error, setError]       = useState("")
+  const [loading, setLoading]   = useState(false)
+  const [mounted, setMounted]   = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       const res = await fetch("http://localhost:5000/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
-
       const data = await res.json()
-
-      if (data.success && data.data?.token) {
-        login(data.data.token)
+      if (data.access_token) {
+        login(data.access_token)
         navigate("/")
       } else {
-        setError(data.message || "Login failed. Check credentials.")
+        setError(data.message || "Invalid credentials. Please try again.")
       }
-    } catch (err) {
-      setError("Cannot connect to backend. Make sure backend is running on port 5000.")
+    } catch {
+      setError("Cannot connect to backend. Please ensure the server is running on port 5000.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side — branding */}
-      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700 relative overflow-hidden flex-col justify-between p-12">
-        {/* Decorative circles */}
-        <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-white/5 rounded-full" />
-        <div className="absolute bottom-[-15%] left-[-5%] w-[350px] h-[350px] bg-white/5 rounded-full" />
-        <div className="absolute top-[40%] right-[20%] w-[200px] h-[200px] bg-white/3 rounded-full" />
+    <div className="min-h-screen flex bg-[#080808] overflow-hidden">
 
-        {/* Top logo */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-              <Sprout className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">FasalSathi</span>
+      {/* ── Left panel — full branding ─────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between p-12 overflow-hidden">
+        {/* Layered background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1f0a] via-[#050d05] to-[#0a0a14]" />
+        {/* Glowing orbs */}
+        <div className="absolute top-[-10%] left-[-5%]  w-[500px] h-[500px] bg-emerald-500/8  rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] bg-lime-500/6    rounded-full blur-[100px]" />
+        <div className="absolute top-[40%]  right-[15%]  w-[200px] h-[200px] bg-cyan-500/5     rounded-full blur-[80px]" />
+        {/* Grid overlay */}
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: "linear-gradient(rgba(52,211,153,1) 1px,transparent 1px),linear-gradient(90deg,rgba(52,211,153,1) 1px,transparent 1px)", backgroundSize: "60px 60px" }} />
+
+        {/* Top — Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : -20 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 flex items-center gap-3"
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 backdrop-blur p-1.5 shadow-[0_0_20px_rgba(52,211,153,0.2)]">
+            <img src={logoSvg} alt="FasalSathi Logo" className="w-full h-full object-contain" />
           </div>
-        </div>
+          <span className="text-xl font-bold tracking-tight text-white">
+            Fasal<span className="text-emerald-400">Sathi</span>
+          </span>
+          <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 tracking-widest">ADMIN</span>
+        </motion.div>
 
-        {/* Center content */}
-        <div className="relative z-10 max-w-lg">
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Smart Agriculture<br />Management Platform
-          </h2>
-          <p className="text-emerald-100/80 text-lg leading-relaxed">
-            Monitor farmers, track mandi prices, manage government schemes, and analyze AI chatbot performance — all from one powerful dashboard.
+        {/* Center — Hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : 30 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="relative z-10 max-w-xl"
+        >
+          {/* Big logo display */}
+          <div className="mb-10 relative w-36 h-36">
+            <div className="absolute inset-0 rounded-3xl bg-emerald-500/10 blur-2xl" />
+            <div className="relative w-36 h-36 rounded-3xl bg-white/[0.04] border border-white/10 backdrop-blur flex items-center justify-center p-5 shadow-[0_0_40px_rgba(52,211,153,0.15)]">
+              <img src={logoSvg} alt="FasalSathi" className="w-full h-full object-contain drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]" />
+            </div>
+          </div>
+
+          <h1 className="text-5xl font-black text-white leading-[1.1] tracking-tight mb-4">
+            Smart{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-green-400 to-lime-400">
+              Agriculture
+            </span>
+            <br />Management.
+          </h1>
+          <p className="text-gray-400 text-lg leading-relaxed max-w-md">
+            Monitor farmers, manage government schemes, track mandi prices, and analyze AI performance — all in one powerful admin console.
           </p>
 
           {/* Feature pills */}
-          <div className="flex flex-wrap gap-3 mt-8">
-            {[
-              { icon: Wheat, label: "Crop Analytics" },
-              { icon: Sun, label: "Weather Alerts" },
-              { icon: CloudRain, label: "Mandi Prices" },
-              { icon: Leaf, label: "AI Powered" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-4 py-2 text-sm text-white/90">
-                <item.icon className="w-4 h-4" />
+          <div className="flex flex-wrap gap-2.5 mt-8">
+            {FEATURE_PILLS.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: mounted ? 1 : 0, y: mounted ? 0 : 10 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                className="flex items-center gap-2 bg-white/[0.04] backdrop-blur border border-white/10 rounded-full px-4 py-1.5 text-sm text-gray-300 hover:border-emerald-500/30 hover:text-emerald-400 transition-all cursor-default"
+              >
+                <item.icon className="w-3.5 h-3.5 text-emerald-400" />
                 {item.label}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Bottom — Stats */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: mounted ? 1 : 0 }}
+          transition={{ delay: 0.5 }}
+          className="relative z-10"
+        >
+          <div className="flex items-center gap-8">
+            {STATS.map((stat, i) => (
+              <div key={i} className="group">
+                <p className="text-3xl font-black text-white group-hover:text-emerald-400 transition-colors">{stat.value}</p>
+                <p className="text-xs text-gray-600 mt-0.5 font-medium">{stat.label}</p>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Bottom stats */}
-        <div className="relative z-10 flex gap-8">
-          {[
-            { value: "12,456", label: "Active Users" },
-            { value: "8,234", label: "Farmers" },
-            { value: "45", label: "Schemes" },
-          ].map((stat, i) => (
-            <div key={i}>
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-sm text-emerald-200/60">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+          <div className="mt-8 flex items-center gap-2 text-xs text-gray-700">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+            Secured with JWT Authentication · TLS Encrypted
+          </div>
+        </motion.div>
       </div>
 
-      {/* Right side — login form */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50 p-6 sm:p-12 relative">
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }} />
+      {/* ── Vertical divider glow ──────────────────────────────────────── */}
+      <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent" />
 
-        <div className="w-full max-w-md relative z-10">
-          {/* Mobile logo — only shows on small screens */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 mb-3 shadow-lg shadow-emerald-500/25">
-              <Sprout className="w-8 h-8 text-white" />
+      {/* ── Right panel — login form ───────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative bg-[#080808]">
+        {/* Subtle background glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/4 rounded-full blur-[150px]" />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: mounted ? 1 : 0, x: mounted ? 0 : 30 }}
+          transition={{ duration: 0.55, delay: 0.1 }}
+          className="w-full max-w-[400px] relative z-10"
+        >
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 p-1.5 flex items-center justify-center">
+              <img src={logoSvg} alt="FasalSathi" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">FasalSathi</h1>
+            <span className="text-xl font-bold text-white">
+              Fasal<span className="text-emerald-400">Sathi</span>
+            </span>
           </div>
 
-          {/* Welcome text */}
-          <div className="mb-10">
-            <h1 className="text-3xl font-bold text-gray-800">Welcome back</h1>
-            <p className="text-gray-500 mt-2 text-base">Enter your credentials to access the admin panel</p>
+          {/* Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-black text-white tracking-tight">Welcome back</h2>
+            <p className="text-gray-500 mt-1.5 text-sm">Sign in to access the admin dashboard</p>
           </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium">
-              {error}
-            </div>
-          )}
+          {/* Error */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                className="mb-5 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm font-medium flex items-start gap-2"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0 mt-1.5" />
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-base font-medium text-gray-700 mb-2">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Email Address</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-emerald-400 transition-colors" />
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 transition-all text-base shadow-sm"
+                  onChange={e => setEmail(e.target.value)}
+                  required
                   placeholder="admin@fasalsathi.com"
-                  required
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(52,211,153,0.1)] transition-all"
                 />
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-base font-medium text-gray-700">Password</label>
-                <a href="#" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">Forgot password?</a>
+            {/* Password */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Password</label>
+                <a href="#" className="text-xs text-emerald-500 hover:text-emerald-400 font-medium transition-colors">Forgot password?</a>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-emerald-400 transition-colors" />
                 <input
-                  type="password"
+                  type={showPwd ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 transition-all text-base shadow-sm"
-                  placeholder="••••••••"
+                  onChange={e => setPassword(e.target.value)}
                   required
+                  placeholder="••••••••"
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.05] focus:shadow-[0_0_0_3px_rgba(52,211,153,0.1)] transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors"
+                >
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" className="w-5 h-5 rounded border-gray-300 accent-emerald-600 cursor-pointer" />
-              <span className="text-base text-gray-500">Keep me signed in</span>
+            {/* Remember me */}
+            <label className="flex items-center gap-3 cursor-pointer select-none group">
+              <div className="relative">
+                <input type="checkbox" className="sr-only peer" />
+                <div className="w-5 h-5 rounded-md border border-white/10 bg-white/[0.03] peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all flex items-center justify-center">
+                  <svg className="w-3 h-3 text-black opacity-0 peer-checked:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 12 12">
+                    <path d="M10 3L5 8.5 2 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </div>
+              </div>
+              <span className="text-sm text-gray-500 group-hover:text-gray-400 transition-colors">Keep me signed in</span>
             </label>
-            
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold rounded-xl py-4 transition-all shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 text-base disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="relative w-full overflow-hidden rounded-xl py-3.5 font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed group"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                "Sign In"
-              )}
+              {/* Gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 transition-all group-hover:from-emerald-400 group-hover:to-lime-400" />
+              {/* Shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              {/* Glow */}
+              <div className="absolute inset-0 shadow-[0_0_30px_rgba(52,211,153,0.4)] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative z-10 flex items-center justify-center gap-2 text-black">
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
+                ) : (
+                  "Sign In to Dashboard"
+                )}
+              </span>
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-400 mt-10">
-            Protected area · Authorized personnel only
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-700 mt-8">
+            Protected area &middot; Authorized personnel only &middot;{" "}
+            <span className="text-emerald-700">FasalSathi Admin</span>
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

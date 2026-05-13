@@ -1,178 +1,194 @@
 import { useState } from "react"
-import { BellRing, Send, AlertTriangle, Info, AlertOctagon } from "lucide-react"
+import { motion } from "framer-motion"
+import { BellRing, Send, AlertOctagon, AlertTriangle, Info, Users, Store, Globe, Loader2 } from "lucide-react"
+import { apiFetch } from "../hooks/useApi"
+import { toast } from "../components/ui/Toast"
+
+const PRIORITIES = [
+  { value: "low",       label: "Low — General Info",     color: "text-blue-400",   border: "border-blue-500/30",   bg: "bg-blue-500/10"   },
+  { value: "medium",    label: "Medium — Important",      color: "text-amber-400",  border: "border-amber-500/30",  bg: "bg-amber-500/10"  },
+  { value: "high",      label: "High — Warning",          color: "text-rose-400",   border: "border-rose-500/30",   bg: "bg-rose-500/10"   },
+  { value: "emergency", label: "EMERGENCY — Act Now",     color: "text-red-400",    border: "border-red-500/30",    bg: "bg-red-500/10"    },
+]
+const CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "weather", label: "Weather Alert" },
+  { value: "scheme",  label: "Government Scheme" },
+  { value: "disease", label: "Disease Outbreak" },
+]
+const TARGETS = [
+  { value: "",       label: "All Users",    icon: Globe },
+  { value: "Farmer", label: "Farmers Only", icon: Users },
+  { value: "Seller", label: "Sellers Only", icon: Store },
+]
+
+const inputCls = "w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 focus:bg-white/[0.05] transition-all"
 
 export default function Notifications() {
-  const [formData, setFormData] = useState({
-    title: '',
-    message: '',
-    type: 'general',
-    priority: 'low',
-    targetRole: ''
+  const [form, setForm] = useState({
+    title: "",
+    message: "",
+    type: "general",
+    priority: "medium",
+    targetRole: "",
   })
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState('')
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setSuccess('')
     try {
-      const token = localStorage.getItem('admin_token')
-      const res = await fetch('http://localhost:5000/api/notifications/bulk', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+      const res = await apiFetch<{ success: boolean }>("/notifications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       })
-      const data = await res.json()
-      if (data.success) {
-        setSuccess('Notification broadcasted successfully!')
-        setFormData({ title: '', message: '', type: 'general', priority: 'low', targetRole: '' })
-        setTimeout(() => setSuccess(''), 3000)
+      if (res.success !== false) {
+        toast.success("Alert broadcasted!", `Notification sent to ${form.targetRole || "all users"}.`)
+        setForm({ title: "", message: "", type: "general", priority: "medium", targetRole: "" })
       }
-    } catch (error) {
-      console.error('Failed to send notification', error)
+    } catch (e: any) {
+      toast.error("Broadcast failed", e.message)
     } finally {
       setLoading(false)
     }
   }
 
+  const selectedPriority = PRIORITIES.find(p => p.value === form.priority) ?? PRIORITIES[1]
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800">Alert System</h1>
-          <p className="text-sm text-slate-500 mt-1">Broadcast high-priority alerts and notifications</p>
-        </div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 pb-12">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Alert System</h1>
+        <p className="text-sm text-gray-500 mt-1">Broadcast high-priority alerts and push notifications to farmers</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Send Notification Form */}
-        <div className="bg-white/70 backdrop-blur-md border border-white/40 p-6 rounded-2xl shadow-sm">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Send className="w-5 h-5 text-indigo-500" />
-            Send New Alert
-          </h3>
-          
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
+          className="lg:col-span-3 glass-panel rounded-2xl p-6 space-y-5"
+        >
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Send className="w-5 h-5 text-emerald-400" /> Send New Alert
+          </h2>
+
           <form onSubmit={handleSend} className="space-y-5">
+            {/* Priority + Category */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Priority Level</label>
-                <select 
-                  value={formData.priority}
-                  onChange={e => setFormData({...formData, priority: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none"
-                >
-                  <option value="low">Low (General Info)</option>
-                  <option value="medium">Medium (Important)</option>
-                  <option value="high">High (Warning)</option>
-                  <option value="emergency">EMERGENCY (Immediate Action)</option>
-                </select>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Priority</label>
+                <div className="flex flex-col gap-2">
+                  {PRIORITIES.map(p => (
+                    <label key={p.value} className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${form.priority === p.value ? `${p.border} ${p.bg}` : "border-white/10 hover:bg-white/[0.02]"}`}>
+                      <input type="radio" name="priority" value={p.value} checked={form.priority === p.value} onChange={() => set("priority", p.value)} className="hidden" />
+                      <div className={`w-2 h-2 rounded-full ${p.color.replace("text-", "bg-")}`} />
+                      <span className={`text-xs font-medium ${form.priority === p.value ? p.color : "text-gray-400"}`}>{p.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Alert Category</label>
-                <select 
-                  value={formData.type}
-                  onChange={e => setFormData({...formData, type: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none"
-                >
-                  <option value="general">General</option>
-                  <option value="weather">Weather Alert</option>
-                  <option value="scheme">Government Scheme</option>
-                  <option value="disease">Disease Outbreak</option>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</label>
+                <select value={form.type} onChange={e => set("type", e.target.value)}
+                  className={inputCls + " bg-[#111] appearance-none"}>
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
+
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mt-4">Target Audience</label>
+                <div className="space-y-2">
+                  {TARGETS.map(t => (
+                    <label key={t.value} className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${form.targetRole === t.value ? "border-emerald-500/30 bg-emerald-500/10" : "border-white/10 hover:bg-white/[0.02]"}`}>
+                      <input type="radio" name="target" value={t.value} checked={form.targetRole === t.value} onChange={() => set("targetRole", t.value)} className="hidden" />
+                      <t.icon className={`w-3.5 h-3.5 ${form.targetRole === t.value ? "text-emerald-400" : "text-gray-500"}`} />
+                      <span className={`text-xs font-medium ${form.targetRole === t.value ? "text-emerald-400" : "text-gray-400"}`}>{t.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Target Audience</label>
-              <select 
-                value={formData.targetRole}
-                onChange={e => setFormData({...formData, targetRole: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none"
-              >
-                <option value="">All Users</option>
-                <option value="Farmer">Farmers Only</option>
-                <option value="Seller">Sellers Only</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Alert Title</label>
-              <input 
-                type="text" 
-                required
-                value={formData.title}
-                onChange={e => setFormData({...formData, title: e.target.value})}
-                placeholder="e.g. Heavy Rainfall Expected Tomorrow" 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Message Content</label>
-              <textarea 
-                rows={4} 
-                required
-                value={formData.message}
-                onChange={e => setFormData({...formData, message: e.target.value})}
-                placeholder="Type your emergency alert or notification here..." 
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none resize-none" 
+            {/* Title */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Alert Title</label>
+              <input
+                type="text" required value={form.title}
+                onChange={e => set("title", e.target.value)}
+                placeholder="e.g. Heavy Rainfall Expected Tomorrow"
+                className={inputCls}
               />
             </div>
 
-            {success && <p className="text-emerald-600 text-sm font-medium">{success}</p>}
+            {/* Message */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Message</label>
+              <textarea
+                rows={4} required value={form.message}
+                onChange={e => set("message", e.target.value)}
+                placeholder="Full notification message..."
+                className={inputCls + " resize-none"}
+              />
+            </div>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className={`w-full font-bold rounded-xl py-3 transition-all flex items-center justify-center gap-2 ${
-                formData.priority === 'emergency' 
-                ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/30' 
-                : 'bg-slate-800 hover:bg-slate-700 text-white shadow-lg shadow-slate-500/20'
+            {/* Submit */}
+            <button
+              type="submit" disabled={loading}
+              className={`w-full font-bold rounded-xl py-3.5 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 ${
+                form.priority === "emergency"
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30"
+                  : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
               }`}
             >
-              <BellRing className="w-5 h-5" />
-              {loading ? 'Sending...' : 'Broadcast Alert'}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <BellRing className="w-5 h-5" />}
+              {loading ? "Broadcasting..." : "Broadcast Alert"}
             </button>
           </form>
-        </div>
+        </motion.div>
 
-        {/* Priority Guidelines */}
-        <div className="space-y-6">
-          <div className="bg-white/70 backdrop-blur-md border border-white/40 p-6 rounded-2xl shadow-sm">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Priority Guidelines</h3>
-            
-            <div className="space-y-4">
-              <div className="flex gap-3 p-4 rounded-xl bg-rose-50 border border-rose-100">
-                <AlertOctagon className="w-6 h-6 text-rose-600 shrink-0" />
+        {/* Priority guide */}
+        <motion.div
+          initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+          className="lg:col-span-2 space-y-4"
+        >
+          <div className="glass-panel rounded-2xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-white">Priority Guide</h3>
+
+            {[
+              { icon: AlertOctagon, color: "text-red-400",   bg: "bg-red-500/10",   border: "border-red-500/20",   label: "EMERGENCY",  desc: "Full-screen popup + loud alarm on farmer app. Use ONLY for cyclones, severe floods, or critical disease outbreaks." },
+              { icon: AlertTriangle,color: "text-rose-400",  bg: "bg-rose-500/10",  border: "border-rose-500/20",  label: "High",       desc: "Push notification with vibration. Use for important market changes or heavy rain warnings." },
+              { icon: AlertTriangle,color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", label: "Medium",     desc: "Standard notification. Use for scheme updates or upcoming pest risk." },
+              { icon: Info,         color: "text-blue-400",  bg: "bg-blue-500/10",  border: "border-blue-500/20",  label: "Low",        desc: "Silent notification in the app tray. General info and non-urgent updates." },
+            ].map((item, i) => (
+              <div key={i} className={`flex gap-3 p-4 rounded-xl border ${item.border} ${item.bg}`}>
+                <item.icon className={`w-5 h-5 ${item.color} flex-shrink-0 mt-0.5`} />
                 <div>
-                  <h4 className="text-sm font-bold text-rose-800">EMERGENCY</h4>
-                  <p className="text-xs text-rose-600 mt-1">Triggers full-screen popup and loud sound on farmer's mobile app. Use ONLY for severe weather, cyclones, or critical disease outbreaks.</p>
+                  <h4 className={`text-sm font-bold ${item.color}`}>{item.label}</h4>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
+            ))}
+          </div>
 
-              <div className="flex gap-3 p-4 rounded-xl bg-amber-50 border border-amber-100">
-                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0" />
-                <div>
-                  <h4 className="text-sm font-bold text-amber-800">High Priority</h4>
-                  <p className="text-xs text-amber-600 mt-1">Triggers standard push notification with vibration. Use for important market changes or heavy rain warnings.</p>
-                </div>
+          {/* Preview card */}
+          <div className={`glass-panel rounded-2xl p-5 border ${selectedPriority.border}`}>
+            <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Live Preview</p>
+            <div className="flex items-start gap-3">
+              <div className={`w-9 h-9 rounded-xl ${selectedPriority.bg} flex items-center justify-center`}>
+                <BellRing className={`w-4 h-4 ${selectedPriority.color}`} />
               </div>
-
-              <div className="flex gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
-                <Info className="w-6 h-6 text-blue-600 shrink-0" />
-                <div>
-                  <h4 className="text-sm font-bold text-blue-800">Low / Medium</h4>
-                  <p className="text-xs text-blue-600 mt-1">Silent notification delivered to the app's notification tray. Used for general news and scheme updates.</p>
-                </div>
+              <div>
+                <p className="text-sm font-bold text-white">{form.title || "Your alert title"}</p>
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{form.message || "Your alert message will appear here..."}</p>
+                <p className="text-xs text-gray-600 mt-1.5">Just now · {form.targetRole || "All users"}</p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

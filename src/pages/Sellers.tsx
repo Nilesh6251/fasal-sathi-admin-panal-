@@ -1,126 +1,195 @@
-import { useState, useEffect } from "react"
-import { Store, CheckCircle, Clock } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Store, CheckCircle2, Clock, RefreshCw, Search, Loader2, ShieldCheck, X } from "lucide-react"
+import { apiFetch } from "../hooks/useApi"
+import { toast } from "../components/ui/Toast"
+import Skeleton from "../components/ui/Skeleton"
+import EmptyState from "../components/ui/EmptyState"
+
+interface Seller {
+  id: string
+  businessName: string
+  gstNumber: string | null
+  isApproved: boolean
+  user?: { name: string; phone: string; email?: string }
+}
+
+interface ApiResponse { success: boolean; data: Seller[] }
 
 export default function Sellers() {
-  const [sellers, setSellers] = useState<any[]>([])
+  const [sellers, setSellers] = useState<Seller[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
 
-  useEffect(() => {
-    const fetchSellers = async () => {
-      try {
-        const token = localStorage.getItem('admin_token')
-        const response = await fetch('http://localhost:5000/api/sellers', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const data = await response.json()
-        if (data.success) {
-          setSellers(data.data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch sellers', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchSellers()
+  const fetchSellers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem("admin_token")
+      const res = await fetch("http://localhost:5000/api/sellers", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data: ApiResponse = await res.json()
+      if (data.success) setSellers(data.data)
+    } catch { toast.error("Failed to load sellers") }
+    finally { setLoading(false) }
   }, [])
 
-  const handleApprove = async (id: string, status: boolean) => {
+  useEffect(() => { fetchSellers() }, [fetchSellers])
+
+  const handleApprove = async (id: string, approve: boolean) => {
+    setActionLoading(id)
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem("admin_token")
       await fetch(`http://localhost:5000/api/sellers/${id}/approve`, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ isApproved: status })
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ isApproved: approve }),
       })
-      // Update local state
-      setSellers(sellers.map(s => s.id === id ? { ...s, isApproved: status } : s))
-    } catch (error) {
-      console.error('Failed to update seller', error)
-    }
+      setSellers(prev => prev.map(s => s.id === id ? { ...s, isApproved: approve } : s))
+      toast.success(approve ? "Seller approved" : "Seller access revoked")
+    } catch { toast.error("Action failed") }
+    finally { setActionLoading(null) }
   }
 
-  if (loading) return <div className="p-8 text-center">Loading sellers...</div>
+  const filtered = sellers.filter(s =>
+    s.businessName.toLowerCase().includes(search.toLowerCase()) ||
+    (s.user?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.gstNumber ?? "").includes(search)
+  )
+
+  const approved = sellers.filter(s => s.isApproved).length
+  const pending = sellers.filter(s => !s.isApproved).length
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-800">Seller Management</h1>
-          <p className="text-base text-slate-500 mt-2">Manage marketplace sellers and verify their businesses</p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Seller Management</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Manage marketplace sellers and verify their businesses</p>
         </div>
+        <button onClick={fetchSellers} className="p-2.5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:border-white/20 transition-colors self-start sm:self-auto">
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
-      <div className="bg-white/70 backdrop-blur-md border border-white/40 rounded-2xl shadow-sm overflow-hidden">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Total Sellers", value: sellers.length, color: "text-white" },
+          { label: "Verified",      value: approved,       color: "text-emerald-400" },
+          { label: "Pending",       value: pending,        color: "text-amber-400" },
+        ].map(stat => (
+          <div key={stat.label} className="glass-panel rounded-xl p-4">
+            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search sellers, GST, owner..."
+          className="w-full pl-9 pr-4 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 transition-all"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="glass-panel rounded-2xl border border-white/5 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-base text-left">
-            <thead className="bg-slate-50/50 text-slate-500">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-white/[0.02] text-gray-500 border-b border-white/10">
               <tr>
-                <th className="px-8 py-5 font-semibold">Business Name</th>
-                <th className="px-8 py-5 font-semibold">User details</th>
-                <th className="px-8 py-5 font-semibold">GST Number</th>
-                <th className="px-8 py-5 font-semibold">Status</th>
-                <th className="px-8 py-5 font-semibold">Actions</th>
+                <th className="px-6 py-4 font-medium">Business</th>
+                <th className="px-6 py-4 font-medium">Owner</th>
+                <th className="px-6 py-4 font-medium">GST Number</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {sellers.map((seller) => (
-                <tr key={seller.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-8 py-5 font-medium text-slate-800">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
-                        <Store className="w-6 h-6 text-indigo-500" />
-                      </div>
-                      <span className="text-lg">{seller.businessName}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <p className="text-slate-800 font-medium">{seller.user?.name}</p>
-                    <p className="text-sm text-slate-500">{seller.user?.phone}</p>
-                  </td>
-                  <td className="px-8 py-5 text-slate-600 font-mono text-sm">{seller.gstNumber || 'N/A'}</td>
-                  <td className="px-8 py-5">
-                    {seller.isApproved ? (
-                      <span className="flex items-center gap-2 text-emerald-600 font-medium bg-emerald-50 px-3 py-1.5 rounded-full w-fit text-sm">
-                        <CheckCircle className="w-5 h-5" /> Verified
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2 text-amber-600 font-medium bg-amber-50 px-3 py-1.5 rounded-full w-fit text-sm">
-                        <Clock className="w-5 h-5" /> Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-8 py-5">
-                    {!seller.isApproved ? (
-                      <button 
-                        onClick={() => handleApprove(seller.id, true)}
-                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm font-semibold transition-colors shadow-sm shadow-emerald-500/20"
-                      >
-                        Approve
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => handleApprove(seller.id, false)}
-                        className="px-4 py-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 text-sm font-semibold transition-colors"
-                      >
-                        Revoke
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {sellers.length === 0 && (
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <Skeleton.TableRow key={i} cols={5} />)
+              ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-10 text-center text-slate-500 text-lg">No sellers registered yet.</td>
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={Store}
+                      title="No sellers found"
+                      description={search ? "Try a different search term" : "Sellers registered on the mobile app will appear here"}
+                    />
+                  </td>
                 </tr>
+              ) : (
+                <AnimatePresence>
+                  {filtered.map(seller => (
+                    <motion.tr
+                      key={seller.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="hover:bg-white/[0.02] transition-colors group"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
+                            <Store className="w-5 h-5 text-purple-400" />
+                          </div>
+                          <span className="font-medium text-white">{seller.businessName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-300 font-medium">{seller.user?.name ?? "—"}</p>
+                        <p className="text-xs text-gray-600">{seller.user?.phone ?? ""}</p>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                        {seller.gstNumber ?? "N/A"}
+                      </td>
+                      <td className="px-6 py-4">
+                        {seller.isApproved ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3 h-3" /> Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                            <Clock className="w-3 h-3" /> Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {!seller.isApproved ? (
+                          <button
+                            onClick={() => handleApprove(seller.id, true)}
+                            disabled={actionLoading === seller.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-lg hover:bg-emerald-500/30 transition-colors disabled:opacity-50 ml-auto"
+                          >
+                            {actionLoading === seller.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                            Approve
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleApprove(seller.id, false)}
+                            disabled={actionLoading === seller.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold rounded-lg hover:bg-rose-500/20 transition-colors disabled:opacity-50 ml-auto"
+                          >
+                            {actionLoading === seller.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                            Revoke
+                          </button>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               )}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

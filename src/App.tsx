@@ -12,6 +12,12 @@ import Notifications from "./pages/Notifications"
 import Sellers from "./pages/Sellers"
 import DiseaseAnalysis from "./pages/DiseaseAnalysis"
 import AIConfig from "./pages/AIConfig"
+import AddScheme from "./pages/schemes/AddScheme"
+import RunningSchemes from "./pages/schemes/RunningSchemes"
+import UpcomingSchemes from "./pages/schemes/UpcomingSchemes"
+import PreviousSchemes from "./pages/schemes/PreviousSchemes"
+import FarmerVerification from "./pages/FarmerVerification"
+import FarmManagement from "./pages/FarmManagement"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -38,6 +44,12 @@ function App() {
             <Route path="sellers" element={<Sellers />} />
             <Route path="disease-analysis" element={<DiseaseAnalysis />} />
             <Route path="ai-config" element={<AIConfig />} />
+            <Route path="schemes/add" element={<AddScheme />} />
+            <Route path="schemes/running" element={<RunningSchemes />} />
+            <Route path="schemes/upcoming" element={<UpcomingSchemes />} />
+            <Route path="schemes/previous" element={<PreviousSchemes />} />
+            <Route path="farmer-verification" element={<FarmerVerification />} />
+            <Route path="farms" element={<FarmManagement />} />
           </Route>
         </Routes>
       </Router>
